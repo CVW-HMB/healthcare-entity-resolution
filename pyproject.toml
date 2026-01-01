@@ -1,0 +1,72 @@
+[project]
+name = "healthcare-entity-resolution"
+version = "0.1.0"
+description = "Graph-based entity resolution for matching physicians across healthcare data sources"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # Data processing
+    "pandas>=2.0",
+    "numpy>=1.24",
+
+    # Graph operations
+    "networkx>=3.0",
+
+    # String matching
+    "jellyfish>=1.0",
+    "rapidfuzz>=3.0",
+
+    # Database
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+
+    # Visualization
+    "matplotlib>=3.7",
+    "plotly>=5.18",
+    "pyvis>=0.3",
+
+    # Dashboard
+    "streamlit>=1.29",
+
+    # Config/utils
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/physician_resolution"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (we set line-length above)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
