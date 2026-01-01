@@ -14,9 +14,6 @@ build/
 venv/
 ENV/
 
-# uv
-uv.lock
-
 # IDE
 .idea/
 *.iml
@@ -46,3 +43,4 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+/data/ground_truth.csv
