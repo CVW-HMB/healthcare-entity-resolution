@@ -56,9 +56,9 @@ def generate_true_physicians(n: int) -> list[dict]:
 def generate_cms_claims(physicians: list[dict], output_path: Path) -> list[dict]:
     """Generate CMS claims records."""
     records = []
+    record_idx = 0
 
     for phys in physicians:
-        # Each physician has 1-5 claim records
         num_records = random.randint(1, 5)
 
         for j in range(num_records):
@@ -70,6 +70,7 @@ def generate_cms_claims(physicians: list[dict], output_path: Path) -> list[dict]
 
             records.append(
                 {
+                    "source_id": f"cms_{record_idx:06d}",
                     "npi": npi,
                     "provider_name": format_name_cms(phys["name"]),
                     "provider_specialty": vary_specialty(phys["specialty"]),
@@ -81,9 +82,10 @@ def generate_cms_claims(physicians: list[dict], output_path: Path) -> list[dict]
                     "true_physician_id": phys["true_id"],
                 }
             )
+            record_idx += 1
 
-    # Write to CSV
     fieldnames = [
+        "source_id",
         "npi",
         "provider_name",
         "provider_specialty",
@@ -105,12 +107,14 @@ def generate_cms_claims(physicians: list[dict], output_path: Path) -> list[dict]
 def generate_state_licenses(physicians: list[dict], output_path: Path) -> list[dict]:
     """Generate state license records."""
     records = []
+    record_idx = 0
 
     for phys in physicians:
         license_num = f"{phys['facility']['state']}-{random.randint(10000, 99999)}"
 
         records.append(
             {
+                "source_id": f"lic_{record_idx:06d}",
                 "license_number": license_num,
                 "physician_name": format_name_license(phys["name"]),
                 "specialty": vary_specialty(phys["specialty"]),
@@ -125,8 +129,10 @@ def generate_state_licenses(physicians: list[dict], output_path: Path) -> list[d
                 "true_physician_id": phys["true_id"],
             }
         )
+        record_idx += 1
 
     fieldnames = [
+        "source_id",
         "license_number",
         "physician_name",
         "specialty",
@@ -151,13 +157,12 @@ def generate_state_licenses(physicians: list[dict], output_path: Path) -> list[d
 def generate_hospital_affiliations(physicians: list[dict], output_path: Path) -> list[dict]:
     """Generate hospital affiliation records."""
     records = []
+    record_idx = 0
 
     for phys in physicians:
-        # Some physicians have multiple affiliations
         num_affiliations = random.choices([1, 2, 3], weights=[0.7, 0.2, 0.1])[0]
 
         for _ in range(num_affiliations):
-            # Use primary facility or generate new one
             if random.random() > 0.3:
                 facility = phys["facility"]
             else:
@@ -166,13 +171,13 @@ def generate_hospital_affiliations(physicians: list[dict], output_path: Path) ->
             hospital_id = f"HOSP_{random.randint(1000, 9999)}"
             start_date = date.today() - timedelta(days=random.randint(365, 3650))
 
-            # NPI only present ~60% of the time
             npi = phys["npi"] if random.random() > 0.4 else None
 
             titles = ["Attending", "Associate", "Chief", "Director", "Fellow"]
 
             records.append(
                 {
+                    "source_id": f"hosp_{record_idx:06d}",
                     "hospital_id": hospital_id,
                     "hospital_name": vary_hospital_name(facility["name"]),
                     "physician_name": format_name_hospital(phys["name"]),
@@ -188,8 +193,10 @@ def generate_hospital_affiliations(physicians: list[dict], output_path: Path) ->
                     "true_physician_id": phys["true_id"],
                 }
             )
+            record_idx += 1
 
     fieldnames = [
+        "source_id",
         "hospital_id",
         "hospital_name",
         "physician_name",
@@ -212,8 +219,8 @@ def generate_hospital_affiliations(physicians: list[dict], output_path: Path) ->
 def generate_publications(physicians: list[dict], output_path: Path) -> list[dict]:
     """Generate publication records."""
     records = []
+    record_idx = 0
 
-    # Only ~40% of physicians have publications
     publishing_physicians = random.sample(physicians, k=int(len(physicians) * 0.4))
 
     journals = [
@@ -242,6 +249,7 @@ def generate_publications(physicians: list[dict], output_path: Path) -> list[dic
 
             records.append(
                 {
+                    "source_id": f"pub_{record_idx:06d}",
                     "publication_id": pub_id,
                     "title": f"Study on {phys['specialty']} outcomes in clinical practice",
                     "author_name": format_name_publication(phys["name"]),
@@ -252,8 +260,10 @@ def generate_publications(physicians: list[dict], output_path: Path) -> list[dic
                     "true_physician_id": phys["true_id"],
                 }
             )
+            record_idx += 1
 
     fieldnames = [
+        "source_id",
         "publication_id",
         "title",
         "author_name",
@@ -275,26 +285,21 @@ def generate_referrals(physicians: list[dict], output_path: Path) -> list[dict]:
     """Generate referral records between physicians."""
     records = []
 
-    # Create referral patterns
-    # PCPs refer to specialists
     pcp_specialties = {"Internal Medicine", "Family Medicine", "Pediatrics"}
     pcps = [p for p in physicians if p["specialty"] in pcp_specialties]
     specialists = [p for p in physicians if p["specialty"] not in pcp_specialties]
 
     for pcp in pcps:
-        # Each PCP refers to 2-10 specialists
         num_referrals = random.randint(2, 10)
         referred_to = random.sample(specialists, k=min(num_referrals, len(specialists)))
 
         for specialist in referred_to:
-            # Multiple patients referred
             num_patients = random.randint(1, 20)
 
             for _ in range(num_patients):
                 ref_date = date.today() - timedelta(days=random.randint(1, 365))
                 patient_id = f"PAT_{random.randint(10000, 99999)}"
 
-                # Simulate missing NPIs
                 referring_npi = corrupt_npi(pcp["npi"], probability=0.08)
                 receiving_npi = corrupt_npi(specialist["npi"], probability=0.08)
 
@@ -327,25 +332,53 @@ def generate_referrals(physicians: list[dict], output_path: Path) -> list[dict]:
     return records
 
 
-def generate_ground_truth(physicians: list[dict], output_path: Path) -> None:
-    """Generate ground truth mapping file."""
-    fieldnames = ["true_physician_id", "npi", "first_name", "last_name", "specialty", "state"]
+def generate_ground_truth(
+    cms_records: list[dict],
+    license_records: list[dict],
+    hospital_records: list[dict],
+    publication_records: list[dict],
+    output_path: Path,
+) -> None:
+    """Generate ground truth mapping: source_id -> true_physician_id."""
+    rows = []
+
+    for r in cms_records:
+        rows.append(
+            {
+                "source_id": r["source_id"],
+                "true_physician_id": r["true_physician_id"],
+                "source": "cms",
+            }
+        )
+    for r in license_records:
+        rows.append(
+            {
+                "source_id": r["source_id"],
+                "true_physician_id": r["true_physician_id"],
+                "source": "license",
+            }
+        )
+    for r in hospital_records:
+        rows.append(
+            {
+                "source_id": r["source_id"],
+                "true_physician_id": r["true_physician_id"],
+                "source": "hospital",
+            }
+        )
+    for r in publication_records:
+        rows.append(
+            {
+                "source_id": r["source_id"],
+                "true_physician_id": r["true_physician_id"],
+                "source": "publication",
+            }
+        )
 
     with open(output_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=["source_id", "true_physician_id", "source"])
         writer.writeheader()
-
-        for phys in physicians:
-            writer.writerow(
-                {
-                    "true_physician_id": phys["true_id"],
-                    "npi": phys["npi"],
-                    "first_name": phys["name"]["first"],
-                    "last_name": phys["name"]["last"],
-                    "specialty": phys["specialty"],
-                    "state": phys["facility"]["state"],
-                }
-            )
+        writer.writerows(rows)
 
 
 def generate_all(
@@ -364,22 +397,30 @@ def generate_all(
     physicians = generate_true_physicians(num_physicians)
 
     print("Generating CMS claims...")
-    generate_cms_claims(physicians, output_dir / "cms_claims.csv")
+    cms_records = generate_cms_claims(physicians, output_dir / "cms_claims.csv")
 
     print("Generating state licenses...")
-    generate_state_licenses(physicians, output_dir / "state_licenses.csv")
+    license_records = generate_state_licenses(physicians, output_dir / "state_licenses.csv")
 
     print("Generating hospital affiliations...")
-    generate_hospital_affiliations(physicians, output_dir / "hospital_affiliations.csv")
+    hospital_records = generate_hospital_affiliations(
+        physicians, output_dir / "hospital_affiliations.csv"
+    )
 
     print("Generating publications...")
-    generate_publications(physicians, output_dir / "publications.csv")
+    publication_records = generate_publications(physicians, output_dir / "publications.csv")
 
     print("Generating referrals...")
     generate_referrals(physicians, output_dir / "referrals.csv")
 
     print("Generating ground truth...")
-    generate_ground_truth(physicians, output_dir.parent / "ground_truth.csv")
+    generate_ground_truth(
+        cms_records,
+        license_records,
+        hospital_records,
+        publication_records,
+        output_dir / "ground_truth.csv",
+    )
 
     print(f"Done! Files written to {output_dir}")
 

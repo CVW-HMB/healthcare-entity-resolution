@@ -14,6 +14,11 @@ logger = get_logger("etl.normalizer")
 
 def _generate_source_id(source: str, row: pd.Series, index: int) -> str:
     """Generate a unique source ID for a record."""
+
+    # Use source_id from CSV if present
+    if "source_id" in row and pd.notna(row.get("source_id")):
+        return str(row["source_id"])
+
     # Use a hash of key fields to create stable IDs
     if source == "cms" and pd.notna(row.get("npi")):
         key = f"cms_{row['npi']}_{row.get('procedure_date', '')}_{index}"
